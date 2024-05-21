@@ -11,31 +11,201 @@
       }
 
       body {
-        background-color: gray;
+        color: #fff;
+        background-color: #111;
       }
 
-      main {
+      header {
+        background-color: #333;
+        display: inline-flex;
+        margin: 0.5rem;
+        padding: 1rem;
+        border-radius: 0.5rem;
+      }
+
+      header h1 {
+        margin: 0;
+      }
+
+      #options {
+        display: inline-flex;
+        flex-direction: column;
+        background-color: #333;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 0.5rem;
+      }
+
+      #options h2 {
+        margin: 0;
+        margin-bottom: 0.5rem;
+      }
+
+      #options div {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        border-left: 0.5rem solid #fff;
+        border-radius: 0.5rem;
+        background-color: #555;
+        padding: 0.5rem;
+      }
+
+      #options div > * {
+        margin-left: 0.5rem;
+      }
+
+      input, button {
+        height: 2rem;
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        color: #fff;
+        background-color: #333;
+      }
+
+      #actions {
+        margin: 0.5rem;
+      }
+
+      #actions button {
+        height: 2.5rem;
+      }
+
+      input:focus, button:focus {
+        outline: 0.1rem solid #fff;
+      }
+
+      #info {
+        background-color: #333;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 0.5rem;
+        display: inline-block;
+      }
+
+      #info span {
+        border-radius: 0.5rem;
+        background-color: #555;
+        padding: 0.5rem;
+      }
+
+      noscript {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
+        background-color: #000;
+        color: #fff;
+        padding: 1rem;
+        border-radius: 0.5rem;
       }
     </style>
   </head>
   <body>
-    <main>
+    <header>
       <h1>Screen Recorder</h1>
-      <button onclick="record()">Record</button>
+    </header>
+    <main>
+      <div id="options">
+        <h2>Options</h2>
+        <div>
+          <span>Frame Rate/s: <input type="number" id="frame-rate" value="30" min="1" /></span>
+          <span>Audio Bits/s: <input type="number" id="audio-bits" value="16000" min="1" /></span>
+          <span>Video Bits/s: <input type="number" id="video-bits" value="312500" min="1" /></span>
+        </div>
+      </div>
+      <div id="actions">
+        <button onclick="start()">Start</button>
+        <button onclick="pause()">Pause</button>
+        <button onclick="resume()">Resume</button>
+        <button onclick="stop()">Stop</button>
+      </div>
+      <div id="info">
+        Status: <span id="state">None</span>
+      </div>
     </main>
+    <noscript>JavaScript is Required!</noscript>
     <script>
-      async function record() {
-        const handle = await window.showSaveFilePicker({ startIn: "videos", types: [{ accept: { "video/webm": ".webm" } }] })
-        const writable = await handle.createWritable()
-        const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
-        const recorder = new MediaRecorder(stream, { mimeType: "video/webm" })
-        recorder.ondataavailable = async ({ data }) => await writable.write(data)
-        recorder.onstop = async () => await writable.close()
-        recorder.start()
+      const frameRateEl = document.querySelector("#frame-rate")
+      const audioBitsEl = document.querySelector("#audio-bits")
+      const videoBitsEl = document.querySelector("#video-bits")
+      const stateEl = document.querySelector("#state")
+
+      let mediaStream = null
+      let mediaRecorder = null
+
+      class AlertedError extends Error {
+        constructor(message) {
+          super(message)
+          alert(message)
+        }
+      }
+
+      async function start() {
+        if (!("showSaveFilePicker" in window)) {
+          throw new AlertedError("File System API Unavailable")
+        }
+
+        const writable = await (
+          await window.showSaveFilePicker({
+            startIn: "videos",
+            types: [{
+              accept: {
+                "video/webm": ".webm"
+              }
+            }]
+          })
+        ).createWritable()
+
+        mediaStream = await navigator.mediaDevices.getDisplayMedia({
+          audio: true,
+          video: {
+            frameRate: parseInt(frameRateEl.value)
+          }
+        })
+
+        mediaRecorder = new MediaRecorder(mediaStream, {
+          audioBitsPerSecond: parseInt(audioBitsEl.value),
+          videoBitsPerSecond: parseInt(videoBitsEl.value),
+          mimeType: "video/webm"
+        })
+
+        mediaRecorder.ondataavailable = async ({ data }) => await writable.write(data)
+        mediaRecorder.onstop = async () => await writable.close()
+        mediaRecorder.onerror = async () => {
+          mediaStream.getTracks().forEach((track) => track.stop())
+          mediaStream = mediaRecorder = null
+          stateEl.textContent = "None"
+          await writable.close()
+        }
+
+        mediaRecorder.start()
+
+        stateEl.textContent = "Recording"
+      }
+
+      function pause() {
+        if (mediaRecorder) {
+          mediaRecorder.pause()
+          stateEl.textContent = "Paused"
+        }
+      }
+
+      function resume() {
+        if (mediaRecorder) {
+          mediaRecorder.resume()
+          stateEl.textContent = "Recording"
+        }
+      }
+
+      function stop() {
+        if (mediaStream && mediaRecorder) {
+          mediaRecorder.stop()
+          mediaStream.getTracks().forEach((track) => track.stop())
+          mediaStream = mediaRecorder = null
+          stateEl.textContent = "None"
+        }
       }
     </script>
   </body>
