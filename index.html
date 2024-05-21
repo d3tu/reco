@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Screen Recorder</title>
+    <style>
+      * {
+        font-family: monospace;
+        font-weight: bold;
+      }
+
+      body {
+        background-color: gray;
+      }
+
+      main {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Screen Recorder</h1>
+      <button onclick="record()">Record</button>
+    </main>
+    <script>
+      async function record() {
+        const handle = await window.showSaveFilePicker({ startIn: "videos", types: [{ accept: { "video/webm": ".webm" } }] })
+        const writable = await handle.createWritable()
+        const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true })
+        const recorder = new MediaRecorder(stream, { mimeType: "video/webm" })
+        recorder.ondataavailable = async ({ data }) => await writable.write(data)
+        recorder.onstop = async () => await writable.close()
+        recorder.start()
+      }
+    </script>
+  </body>
+</html>
