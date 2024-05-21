@@ -122,7 +122,7 @@
         <button onclick="stop()">Stop</button>
       </div>
       <div id="info">
-        State: <span id="state">None</span>
+        State: <span id="state">none</span>
       </div>
     </main>
     <noscript>JavaScript is Required!</noscript>
@@ -176,26 +176,26 @@
         mediaRecorder.onerror = async () => {
           mediaStream.getTracks().forEach((track) => track.stop())
           mediaStream = mediaRecorder = null
-          stateEl.textContent = "None"
+          stateEl.textContent = "none"
           await writable.close()
         }
 
         mediaRecorder.start()
 
-        stateEl.textContent = "Recording"
+        stateEl.textContent = "recording"
       }
 
       function pause() {
         if (mediaRecorder) {
           mediaRecorder.pause()
-          stateEl.textContent = "Paused"
+          stateEl.textContent = "paused"
         }
       }
 
       function resume() {
         if (mediaRecorder) {
           mediaRecorder.resume()
-          stateEl.textContent = "Recording"
+          stateEl.textContent = "recording"
         }
       }
 
@@ -204,7 +204,7 @@
           mediaRecorder.stop()
           mediaStream.getTracks().forEach((track) => track.stop())
           mediaStream = mediaRecorder = null
-          stateEl.textContent = "None"
+          stateEl.textContent = "none"
         }
       }
     </script>
