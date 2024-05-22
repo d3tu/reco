@@ -2,6 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="description" content="A screen recorder in browser for record your screen and audio" />
+    <meta name="keywords" content="Screen Recorder, in Browser, Record Screen, Record, Recorder" />
+    <meta name="author" content="Deto" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Screen Recorder</title>
     <style>
@@ -90,6 +94,16 @@
         padding: 0.5rem;
       }
 
+      footer {
+        position: absolute;
+        bottom: 0;
+        margin: 0.5rem;
+      }
+      
+      footer a {
+        color: white;
+      }
+
       noscript {
         position: absolute;
         top: 50%;
@@ -125,6 +139,9 @@
         State: <span id="state">none</span>
       </div>
     </main>
+    <footer>
+      <a href="https://github.com/d3tu/reco/">GitHub</a>
+    </footer>
     <noscript>JavaScript is Required!</noscript>
     <script>
       const frameRateEl = document.querySelector("#frame-rate")
