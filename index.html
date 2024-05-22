@@ -125,8 +125,8 @@
         <h2>Options</h2>
         <div>
           <span>Frame Rate/s: <input type="number" id="frame-rate" value="30" min="1" /></span>
-          <span>Audio Bits/s: <input type="number" id="audio-bits" value="16000" min="1" /></span>
-          <span>Video Bits/s: <input type="number" id="video-bits" value="312500" min="1" /></span>
+          <span>Audio Bits/s: <input type="number" id="audio-bits" value="128000" min="1" /></span>
+          <span>Video Bits/s: <input type="number" id="video-bits" value="2500000" min="1" /></span>
         </div>
       </div>
       <div id="actions">
@@ -169,7 +169,7 @@
             startIn: "videos",
             types: [{
               accept: {
-                "video/webm": ".webm"
+                "video/mp4": ".mp4"
               }
             }]
           })
@@ -188,40 +188,49 @@
           mimeType: "video/webm"
         })
 
-        mediaRecorder.ondataavailable = async ({ data }) => await writable.write(data)
-        mediaRecorder.onstop = async () => await writable.close()
-        mediaRecorder.onerror = async () => {
+        mediaRecorder.ondataavailable = async ({ data }) => {
+          if (data.size > 0) {
+            await writable.write(new Blob([data], {
+              type: "video/mp4"
+            }))
+          }
+        }
+
+        mediaRecorder.onpause = () => {
+          stateEl.textContent = "paused"
+        }
+
+        mediaRecorder.onresume = () => {
+          stateEl.textContent = "recording"
+        }
+
+        mediaRecorder.onstop = mediaRecorder.onerror = async () => {
           mediaStream.getTracks().forEach((track) => track.stop())
           mediaStream = mediaRecorder = null
           stateEl.textContent = "none"
           await writable.close()
         }
 
-        mediaRecorder.start()
+        mediaRecorder.start(1000)
 
         stateEl.textContent = "recording"
       }
 
       function pause() {
-        if (mediaRecorder) {
+        if (!!mediaRecorder) {
           mediaRecorder.pause()
-          stateEl.textContent = "paused"
         }
       }
 
       function resume() {
-        if (mediaRecorder) {
+        if (!!mediaRecorder) {
           mediaRecorder.resume()
-          stateEl.textContent = "recording"
         }
       }
 
       function stop() {
-        if (mediaStream && mediaRecorder) {
+        if (!!mediaStream && !!mediaRecorder) {
           mediaRecorder.stop()
-          mediaStream.getTracks().forEach((track) => track.stop())
-          mediaStream = mediaRecorder = null
-          stateEl.textContent = "none"
         }
       }
     </script>
