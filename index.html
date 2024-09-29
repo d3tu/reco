@@ -31,7 +31,7 @@
         margin: 0;
       }
 
-      #options {
+      nav {
         display: inline-flex;
         flex-direction: column;
         background-color: #333;
@@ -40,12 +40,12 @@
         margin: 0.5rem;
       }
 
-      #options h2 {
+      nav h2 {
         margin: 0;
         margin-bottom: 0.5rem;
       }
 
-      #options div {
+      nav div {
         display: inline-flex;
         flex-direction: column;
         gap: 0.5rem;
@@ -55,7 +55,7 @@
         padding: 0.5rem;
       }
 
-      #options div > * {
+      nav div > * {
         margin-left: 0.5rem;
       }
 
@@ -114,6 +114,29 @@
         padding: 1rem;
         border-radius: 0.5rem;
       }
+
+      @media (max-width: 600px) {
+        nav, #actions {
+          width: 90%;
+          margin: 0.5rem auto;
+        }
+      }
+
+      .recording {
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
     </style>
   </head>
   <body>
@@ -121,19 +144,19 @@
       <h1>Screen Recorder</h1>
     </header>
     <main>
-      <div id="options">
+      <nav id="options">
         <h2>Options</h2>
         <div>
-          <span>Frame Rate/s: <input type="number" id="frame-rate" value="30" min="1" /></span>
-          <span>Audio Bits/s: <input type="number" id="audio-bits" value="128000" min="1" /></span>
-          <span>Video Bits/s: <input type="number" id="video-bits" value="2500000" min="1" /></span>
+          <span>Frame Rate/s: <input type="number" id="frame-rate" value="30" min="1" max="60" aria-label="Frame rate per second" /></span>
+          <span>Audio Bits/s: <input type="number" id="audio-bits" value="128000" min="1" max="320000" aria-label="Audio bits per second" /></span>
+          <span>Video Bits/s: <input type="number" id="video-bits" value="2500000" min="1" max="8000000" aria-label="Video bits per second" /></span>
         </div>
-      </div>
+      </nav>
       <div id="actions">
-        <button onclick="start()">Start</button>
-        <button onclick="pause()">Pause</button>
-        <button onclick="resume()">Resume</button>
-        <button onclick="stop()">Stop</button>
+        <button id="start-btn" onclick="start()" aria-label="Start recording">Start</button>
+        <button id="pause-btn" onclick="pause()" aria-label="Pause recording" disabled>Pause</button>
+        <button id="resume-btn" onclick="resume()" aria-label="Resume recording" disabled>Resume</button>
+        <button id="stop-btn" onclick="stop()" aria-label="Stop recording" disabled>Stop</button>
       </div>
       <div id="info">
         State: <span id="state">none</span>
@@ -144,95 +167,135 @@
     </footer>
     <noscript>JavaScript is Required!</noscript>
     <script>
-      const frameRateEl = document.querySelector("#frame-rate")
-      const audioBitsEl = document.querySelector("#audio-bits")
-      const videoBitsEl = document.querySelector("#video-bits")
-      const stateEl = document.querySelector("#state")
+      const frameRateEl = document.querySelector("#frame-rate");
+      const audioBitsEl = document.querySelector("#audio-bits");
+      const videoBitsEl = document.querySelector("#video-bits");
+      const stateEl = document.querySelector("#state");
+      const startBtn = document.querySelector("#start-btn");
+      const pauseBtn = document.querySelector("#pause-btn");
+      const resumeBtn = document.querySelector("#resume-btn");
+      const stopBtn = document.querySelector("#stop-btn");
 
-      let mediaStream = null
-      let mediaRecorder = null
+      let mediaStream = null;
+      let mediaRecorder = null;
 
       class AlertedError extends Error {
         constructor(message) {
-          super(message)
-          alert(message)
+          super(message);
+          alert(message);
         }
+      }
+
+      function updateButtonStates(recording, paused) {
+        startBtn.disabled = recording;
+        pauseBtn.disabled = !recording || paused;
+        resumeBtn.disabled = !recording || !paused;
+        stopBtn.disabled = !recording;
+      }
+
+      function validateInput(input, min, max) {
+        const value = parseInt(input.value);
+        if (isNaN(value) || value < min || value > max) {
+          throw new AlertedError(`Invalid input for ${input.id}. Please enter a number between ${min} and ${max}.`);
+        }
+        return value;
       }
 
       async function start() {
-        if (!("showSaveFilePicker" in window)) {
-          throw new AlertedError("File System API Unavailable")
-        }
-
-        const writable = await (
-          await window.showSaveFilePicker({
-            startIn: "videos",
-            types: [{
-              accept: {
-                "video/mp4": ".mp4"
-              }
-            }]
-          })
-        ).createWritable()
-
-        mediaStream = await navigator.mediaDevices.getDisplayMedia({
-          audio: true,
-          video: {
-            frameRate: parseInt(frameRateEl.value)
+        try {
+          if (!("showSaveFilePicker" in window)) {
+            throw new AlertedError("File System API Unavailable");
           }
-        })
 
-        mediaRecorder = new MediaRecorder(mediaStream, {
-          audioBitsPerSecond: parseInt(audioBitsEl.value),
-          videoBitsPerSecond: parseInt(videoBitsEl.value),
-          mimeType: "video/webm"
-        })
+          const frameRate = validateInput(frameRateEl, 1, 60);
+          const audioBits = validateInput(audioBitsEl, 1, 320000);
+          const videoBits = validateInput(videoBitsEl, 1, 8000000);
 
-        mediaRecorder.ondataavailable = async ({ data }) => {
-          if (data.size > 0) {
-            await writable.write(new Blob([data], {
-              type: "video/mp4"
-            }))
+          const writable = await (
+            await window.showSaveFilePicker({
+              startIn: "videos",
+              types: [{
+                accept: {
+                  "video/mp4": ".mp4"
+                }
+              }]
+            })
+          ).createWritable();
+
+          mediaStream = await navigator.mediaDevices.getDisplayMedia({
+            audio: true,
+            video: {
+              frameRate: frameRate
+            }
+          });
+
+          mediaRecorder = new MediaRecorder(mediaStream, {
+            audioBitsPerSecond: audioBits,
+            videoBitsPerSecond: videoBits,
+            mimeType: "video/webm"
+          });
+
+          mediaRecorder.ondataavailable = async ({ data }) => {
+            if (data.size > 0) {
+              await writable.write(new Blob([data], {
+                type: "video/mp4"
+              }));
+            }
+          };
+
+          mediaRecorder.onpause = () => {
+            stateEl.textContent = "paused";
+            updateButtonStates(true, true);
+          };
+
+          mediaRecorder.onresume = () => {
+            stateEl.textContent = "recording";
+            stateEl.classList.add("recording");
+            updateButtonStates(true, false);
+          };
+
+          mediaRecorder.onstop = mediaRecorder.onerror = async () => {
+            mediaStream.getTracks().forEach((track) => track.stop());
+            mediaStream = mediaRecorder = null;
+            stateEl.textContent = "none";
+            stateEl.classList.remove("recording");
+            updateButtonStates(false, false);
+            await writable.close();
+          };
+
+          mediaRecorder.start(1000);
+
+          stateEl.textContent = "recording";
+          stateEl.classList.add("recording");
+          updateButtonStates(true, false);
+        } catch (error) {
+          console.error(error);
+          if (!(error instanceof AlertedError)) {
+            alert(`An error occurred: ${error.message}`);
           }
         }
-
-        mediaRecorder.onpause = () => {
-          stateEl.textContent = "paused"
-        }
-
-        mediaRecorder.onresume = () => {
-          stateEl.textContent = "recording"
-        }
-
-        mediaRecorder.onstop = mediaRecorder.onerror = async () => {
-          mediaStream.getTracks().forEach((track) => track.stop())
-          mediaStream = mediaRecorder = null
-          stateEl.textContent = "none"
-          await writable.close()
-        }
-
-        mediaRecorder.start(1000)
-
-        stateEl.textContent = "recording"
       }
 
       function pause() {
-        if (!!mediaRecorder) {
-          mediaRecorder.pause()
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          mediaRecorder.pause();
         }
       }
 
       function resume() {
-        if (!!mediaRecorder) {
-          mediaRecorder.resume()
+        if (mediaRecorder && mediaRecorder.state === "paused") {
+          mediaRecorder.resume();
         }
       }
 
       function stop() {
-        if (!!mediaStream && !!mediaRecorder) {
-          mediaRecorder.stop()
+        if (mediaStream && mediaRecorder) {
+          mediaRecorder.stop();
         }
       }
+
+      // Initialize button states
+      updateButtonStates(false, false);
     </script>
   </body>
 </html>
